@@ -1,5 +1,5 @@
 # Search Panel
-The panel fetches country, states and cities with the help of ann API. The API docs are [here](https://countrystatecity.in/docs).
+The panel fetches country, states and cities with the help of an API. The API docs are [here](https://countrystatecity.in/docs).
 
 ### How to make it work
 * Request an API key from the above link.
