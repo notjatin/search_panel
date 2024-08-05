@@ -1,7 +1,8 @@
+require('dotenv').config()
 var headers = new Headers();
 headers.append(
   "X-CSCAPI-KEY",
-  "NmRDWFh3ZjBJRjZqakhiaEc4TEdWM0ZXcjFWTTdiUVEyR3Y4a24yOA=="
+  process.env.API_KEY
 );
 
 var requestOptions = {
@@ -10,61 +11,51 @@ var requestOptions = {
   redirect: "follow",
 };
 
-const states = [];
-fetch("https://api.countrystatecity.in/v1/countries/IN/states", requestOptions)
-  .then((response) => response.json())
-  .then((state) => {
-    states.push(...state);
-  })
-  .catch((error) => console.log("error", error));
+const apiHeader = `https://api.countrystatecity.in/v1`;
 
-// const endpoint = 'https://gist.githubusercontent.com/Miserlou/c5cd8364bf9b2420bb29/raw/2bf258763cdddd704f8ffd3ea9a3e81d25e2c6f6/cities.json';
-
-const cities = [];
-states.forEach((state) => {
-  fetch(
-    `https://api.countrystatecity.in/v1/countries/IN/states/${state.iso2}/cities`,
-    requestOptions
-  )
-    .then((response) => response.json())
-    .then((city) => cities.push(...city))
-    .catch((error) => console.log("error", error));
-});
-
-function findMatches(wordToMatch, cities) {
-  return cities.filter((city) => {
-    // here we need to figure out if the city or state matches what was searched
-    const regex = new RegExp(wordToMatch, "gi");
-    return city.name.match(regex);
+// Function to fetch states
+function fetchStates() {
+  const statesUrl = `${apiHeader}/countries/IN/states`;
+  return fetch(statesUrl, requestOptions)
+  .then(response => {
+      if (!response.ok) {
+          throw new Error(`Error fetching states: ${response.statusText}`);
+      }
+      return response.json();
   });
 }
 
-function numberWithCommas(x) {
-  return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+// Function to fetch cities for a given state
+function fetchCities(stateId) {
+  const citiesUrl = `${apiHeader}/countries/IN/states/${stateId}/cities`;
+  return fetch(citiesUrl,requestOptions)
+      .then(response => {
+          if (!response.ok) {
+              throw new Error(`Error fetching cities for state ${stateId}: ${response.statusText}`);
+          }
+          return response.json();
+      });
 }
 
-function displayMatches() {
-  const matchArray = findMatches(this.value, states);
-  const html = matchArray
-    .map((state) => {
-      const regex = new RegExp(this.value, "gi");
-      const cityName = state.name.replace(
-        regex,
-        `<span class="hl">${this.value}</span>`
-      );
-      return `
-      <li>
-        <span class="name">${cityName}</span>
-        <span class="iso">${state.iso2}</span>
-      </li>
-    `;
-    })
-    .join("");
-  suggestions.innerHTML = html;
+// Main function to fetch states and then fetch cities for each state
+function fetchStatesAndCities() {
+  fetchStates()
+      .then(states => {
+          console.log('Fetched states with then:', states);
+          const cityPromises = states.map(state => {
+              return fetchCities(state.id).then(cities => {
+                  return { stateId: state.id, cities: cities };
+              });
+          });
+          return Promise.all(cityPromises);
+      })
+      .then(citiesArray => {
+          console.log('Fetched cities for each state with then:', citiesArray);
+      })
+      .catch(error => {
+          console.error('Error:', error);
+      });
 }
 
-const searchInput = document.querySelector(".search");
-const suggestions = document.querySelector(".suggestions");
-
-searchInput.addEventListener("change", displayMatches);
-searchInput.addEventListener("keyup", displayMatches);
+// // Call the main function
+// fetchStatesAndCitiesWithThen();
